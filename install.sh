@@ -42,6 +42,7 @@ target="$HOME/.tmux.conf"
 backup=""
 if [ -L "$target" ]; then
   # -ef is not strictly POSIX but dash, bash, busybox and macOS sh all support it
+  # shellcheck disable=SC3013
   [ "$target" -ef "$DOTFILES/tmux/.tmux.conf" ] ||
     die "$target is a symlink to $(readlink "$target"); remove it and re-run"
 elif [ -f "$target" ] && [ -z "$ADOPT" ]; then

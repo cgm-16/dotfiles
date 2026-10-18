@@ -1,6 +1,7 @@
 #!/bin/sh
 # Acceptance tests for install.sh. Each case runs in a throwaway $HOME.
 # Usage: sh test/install_test.sh   (needs git, stow, tmux; no network)
+# shellcheck disable=SC3013,SC2010  # -ef is supported by every target sh; test filenames are fixed
 set -eu
 
 REPO=$(cd "$(dirname "$0")/.." && pwd -P)
@@ -44,10 +45,10 @@ assert_linked "fresh install"
 pass "fresh install links ~/.tmux.conf"
 
 # 3. second run succeeds and changes nothing
-before=$(ls -la "$HOME")
+before=$(ls -lai "$HOME")
 run_install || fail "second run exited non-zero: $(cat "$HOME/out.log")"
 assert_linked "second run"
-[ "$(ls -la "$HOME" | grep -v out.log)" = "$(echo "$before" | grep -v out.log)" ] ||
+[ "$(ls -lai "$HOME" | grep -v out.log)" = "$(echo "$before" | grep -v out.log)" ] ||
   fail "second run changed \$HOME"
 [ -z "$(git -C "$HOME/dotfiles" status --porcelain)" ] || fail "second run dirtied the repo"
 pass "second run is a no-op"
@@ -92,5 +93,11 @@ grep -q "stow" "$HOME/out.log" || fail "missing stow: no mention of stow"
 grep -q "install stow" "$HOME/out.log" || fail "missing stow: no install hint"
 [ "$(wc -l <"$HOME/out.log")" -le 3 ] || fail "missing stow: noisy output: $(cat "$HOME/out.log")"
 pass "missing stow gives a clear error"
+
+# 8. a checkout outside ~/dotfiles still links into $HOME, not its parent dir
+new_home 8
+DOTFILES="$HOME/repos/dotfiles" run_install || fail "custom DOTFILES exited non-zero: $(cat "$HOME/out.log")"
+[ "$HOME/.tmux.conf" -ef "$HOME/repos/dotfiles/tmux/.tmux.conf" ] || fail "custom DOTFILES: not linked into \$HOME"
+pass "DOTFILES outside ~/dotfiles links into \$HOME"
 
 echo "all tests passed"
