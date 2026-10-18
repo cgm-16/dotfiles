@@ -1,6 +1,7 @@
 #!/bin/sh
 # Acceptance tests for install.sh. Each case runs in a throwaway $HOME.
 # Usage: sh test/install_test.sh   (needs git, stow, tmux; no network)
+# shellcheck disable=SC3013,SC2010  # -ef is supported by every target sh; test filenames are fixed
 set -eu
 
 REPO=$(cd "$(dirname "$0")/.." && pwd -P)
