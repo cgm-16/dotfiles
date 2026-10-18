@@ -93,4 +93,10 @@ grep -q "install stow" "$HOME/out.log" || fail "missing stow: no install hint"
 [ "$(wc -l <"$HOME/out.log")" -le 3 ] || fail "missing stow: noisy output: $(cat "$HOME/out.log")"
 pass "missing stow gives a clear error"
 
+# 8. a checkout outside ~/dotfiles still links into $HOME, not its parent dir
+new_home 8
+DOTFILES="$HOME/repos/dotfiles" run_install || fail "custom DOTFILES exited non-zero: $(cat "$HOME/out.log")"
+[ "$HOME/.tmux.conf" -ef "$HOME/repos/dotfiles/tmux/.tmux.conf" ] || fail "custom DOTFILES: not linked into \$HOME"
+pass "DOTFILES outside ~/dotfiles links into \$HOME"
+
 echo "all tests passed"
