@@ -45,10 +45,10 @@ assert_linked "fresh install"
 pass "fresh install links ~/.tmux.conf"
 
 # 3. second run succeeds and changes nothing
-before=$(ls -la "$HOME")
+before=$(ls -lai "$HOME")
 run_install || fail "second run exited non-zero: $(cat "$HOME/out.log")"
 assert_linked "second run"
-[ "$(ls -la "$HOME" | grep -v out.log)" = "$(echo "$before" | grep -v out.log)" ] ||
+[ "$(ls -lai "$HOME" | grep -v out.log)" = "$(echo "$before" | grep -v out.log)" ] ||
   fail "second run changed \$HOME"
 [ -z "$(git -C "$HOME/dotfiles" status --porcelain)" ] || fail "second run dirtied the repo"
 pass "second run is a no-op"
