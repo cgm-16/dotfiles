@@ -27,4 +27,4 @@ check "" "bash, interactive" bash --norc --noprofile -i -c "$PRINT"
 rm "$T/.config/gh/agent-token"
 check "" "no default token file, marker set" env CLAUDECODE=1 zsh -f -c "$PRINT"
 
-[ "$FAIL" = 0 ] && echo "all cases pass" || { echo "$FAIL case(s) failed"; exit 1; }
+if [ "$FAIL" = 0 ]; then echo "all cases pass"; else echo "$FAIL case(s) failed"; exit 1; fi

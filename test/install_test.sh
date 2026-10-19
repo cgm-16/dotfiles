@@ -133,7 +133,7 @@ echo 'echo local-read' >"$HOME/.zshrc.local"
 # +o globalrcs skips /etc/zprofile, whose path_helper would put Homebrew's fnm back on PATH.
 out=$(cd "$HOME" && env -u FNM_MULTISHELL_PATH PATH=/usr/bin:/bin zsh +o globalrcs -l -i -c true 2>"$HOME/err.log")
 [ ! -s "$HOME/err.log" ] || fail "zsh startup wrote to stderr: $(cat "$HOME/err.log")"
-[ "$out" = "local-read" ] || fail "~/.zshrc.local was not sourced (stdout: $out)"
+[ "$out" = "local-read" ] || fail "zsh did not source ~/.zshrc.local (stdout: $out)"
 pass "zsh starts cleanly without fnm or oh-my-zsh and sources ~/.zshrc.local"
 
 # 10. bash login shells still read ~/.profile, which Debian and Ubuntu chain ~/.bashrc from
@@ -150,8 +150,8 @@ new_home 11
 run_install || fail "git run exited non-zero: $(cat "$HOME/out.log")"
 printf '[user]\n\temail = local@example.com\n' >"$HOME/.gitconfig.local"
 got=$(cd "$HOME" && GIT_CONFIG_NOSYSTEM=1 git config --get user.email)
-[ "$got" = "local@example.com" ] || fail "~/.gitconfig.local does not override ~/.gitconfig (got: $got)"
-pass "~/.gitconfig.local overrides ~/.gitconfig"
+[ "$got" = "local@example.com" ] || fail "git: ~/.gitconfig.local does not override ~/.gitconfig (got: $got)"
+pass "values in ~/.gitconfig.local override ~/.gitconfig"
 
 # 12. the token loader passes its own acceptance test
 out=$(sh "$REPO/gh/.config/gh/agent-token-test.sh" "$REPO/gh/.config/gh/agent-token.sh" 2>&1) ||
