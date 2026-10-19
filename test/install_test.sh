@@ -158,4 +158,14 @@ out=$(sh "$REPO/gh/.config/gh/agent-token-test.sh" "$REPO/gh/.config/gh/agent-to
   fail "agent-token-test.sh: $out"
 pass "agent-token loader passes its own test"
 
+# 13. the linked startup files hand non-interactive shells the agent token
+new_home 13
+run_install || fail "token run exited non-zero: $(cat "$HOME/out.log")"
+printf 'fake-wired' >"$HOME/.config/gh/agent-token"
+# Compared, never printed: if the loader never ran, this is the token the test inherited.
+token_from() { (cd "$HOME" && PATH=/usr/bin:/bin "$@" 'printenv GH_TOKEN'); }
+[ "$(token_from zsh -c)" = "fake-wired" ] || fail "zsh -c: ~/.zshenv did not load the agent token"
+[ "$(token_from bash -l -c)" = "fake-wired" ] || fail "bash -l -c: ~/.bash_profile did not load the agent token"
+pass "zsh and bash login shells load the agent token through the linked files"
+
 echo "all tests passed"
