@@ -11,6 +11,8 @@
 # Added by cua-driver-rs installer -- see https://github.com/trycua/cua
 # Moved here from ~/.zshrc: it carries a node symlink into the Hermes bundle,
 # so it has to be prepended BEFORE fnm or it shadows the version fnm selected.
-export PATH="/Users/ori/.local/bin:$PATH"
+export PATH="$HOME/.local/bin:$PATH"
 
-eval "$(fnm env --use-on-cd --version-file-strategy=recursive --corepack-enabled --shell zsh)"
+if command -v fnm >/dev/null; then
+  eval "$(fnm env --use-on-cd --version-file-strategy=recursive --corepack-enabled --shell zsh)"
+fi

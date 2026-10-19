@@ -72,7 +72,8 @@ ZSH_THEME="robbyrussell"
 # Add wisely, as too many plugins slow down shell startup.
 plugins=(git)
 
-source $ZSH/oh-my-zsh.sh
+# Hosts without Oh My Zsh still get the rest of this file.
+[[ -r $ZSH/oh-my-zsh.sh ]] && source $ZSH/oh-my-zsh.sh
 
 # User configuration
 
@@ -103,14 +104,9 @@ source $ZSH/oh-my-zsh.sh
 # alias zshconfig="mate ~/.zshrc"
 # alias ohmyzsh="mate ~/.oh-my-zsh"
 
-# opencode
-export PATH=/Users/ori/.opencode/bin:$PATH
-
-# The following lines have been added by Docker Desktop to enable Docker CLI completions.
-fpath=(/Users/ori/.docker/completions $fpath)
-autoload -Uz compinit
-compinit
-# End of Docker CLI completions
+# Machine-local settings, such as lines an installer appends, live in
+# ~/.zshrc.local, which is never committed.
+[[ -r ~/.zshrc.local ]] && source ~/.zshrc.local
 
 # ~/.local/bin and fnm both live in ~/.zprofile, which every login shell reads.
 # A non-login interactive shell -- a VS Code terminal, some tmux setups --
