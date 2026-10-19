@@ -1,7 +1,7 @@
 #!/bin/sh
 # Install dotfiles: clone or update the repo, then stow packages into $HOME.
 # Usage: install.sh [--adopt]
-#   --adopt  move an existing ~/.tmux.conf into the repo instead of backing it up
+#   --adopt  move existing files into the repo instead of backing them up
 # Env: DOTFILES (checkout path, default ~/dotfiles), DOTFILES_REPO (clone URL)
 set -eu
 
@@ -38,23 +38,40 @@ else
   git clone "$DOTFILES_REPO" "$DOTFILES"
 fi
 
-target="$HOME/.tmux.conf"
-backup=""
-if [ -L "$target" ]; then
+# Stow packages: each top-level folder mirrors the files it links into $HOME.
+set -- tmux zsh bash git gh
+
+# Tracked files only, as package/path, so files tools write beside a link
+# (gh's tokens next to the loader) are never touched.
+files=$(git -C "$DOTFILES" ls-files -- "$@")
+
+# Refuse before moving anything, so a failed run leaves $HOME as it was.
+for file in $files; do
+  target="$HOME/${file#*/}"
   # -ef is not strictly POSIX but dash, bash, busybox and macOS sh all support it
   # shellcheck disable=SC3013
-  [ "$target" -ef "$DOTFILES/tmux/.tmux.conf" ] ||
+  [ ! -L "$target" ] || [ "$target" -ef "$DOTFILES/$file" ] ||
     die "$target is a symlink to $(readlink "$target"); remove it and re-run"
-elif [ -f "$target" ] && [ -z "$ADOPT" ]; then
-  backup="$target.bak.$(date +%Y%m%d%H%M%S)"
-  mv "$target" "$backup"
-  echo "backed up $target to $backup"
+done
+
+backups=""
+if [ -z "$ADOPT" ]; then
+  stamp=$(date +%Y%m%d%H%M%S)
+  for file in $files; do
+    target="$HOME/${file#*/}"
+    [ ! -L "$target" ] && [ -f "$target" ] || continue
+    mv "$target" "$target.bak.$stamp"
+    echo "backed up $target to $target.bak.$stamp"
+    backups="$backups $target.bak.$stamp"
+  done
 fi
 
-stow -d "$DOTFILES" -t "$HOME" $ADOPT -R -v tmux
+# --no-folding links files, never directories: a folded ~/.config would put
+# everything other tools write there, gh's tokens included, inside the repo.
+stow -d "$DOTFILES" -t "$HOME" $ADOPT --no-folding -R -v "$@"
 
 echo
-echo "linked: $target -> $DOTFILES/tmux/.tmux.conf"
-[ -z "$backup" ] || echo "backup: $backup"
+echo "linked into $HOME: $*"
+for backup in $backups; do echo "backup: $backup"; done
 [ -z "$ADOPT" ] || echo "adopted: review with: git -C $DOTFILES diff"
 echo "start tmux, plugins install automatically"
