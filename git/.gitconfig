@@ -1,0 +1,11 @@
+[user]
+	name = Ori
+	email = sdgwsld@gmail.com
+[alias]
+	tidy = "!f() { force=0; case \"$1\" in --force) force=1 ;; \"\") ;; *) echo \"usage: git tidy [--force]\" >&2; return 2 ;; esac; git switch main || return; git worktree prune || return; failed=0; for branch in $(git for-each-ref --merged=origin/main --format='%(refname:short)' refs/heads); do case \"$branch\" in main|develop) continue ;; esac; wt_path=$(git worktree list --porcelain | awk -v target=\"refs/heads/$branch\" '$1 == \"worktree\" { path = substr($0, 10) } $1 == \"branch\" && $2 == target { print path }' ); if [ -n \"$wt_path\" ]; then if [ \"$force\" -eq 1 ]; then git worktree remove --force \"$wt_path\" || { echo \"tidy: could not remove worktree for $branch: $wt_path\" >&2; failed=1; continue; }; else git worktree remove \"$wt_path\" || { echo \"tidy: could not remove worktree for $branch: $wt_path\" >&2; continue; }; fi; fi; git branch -D \"$branch\" || { echo \"tidy: could not delete branch $branch\" >&2; failed=1; }; done; return \"$failed\"; }; f"
+[credential "https://github.com"]
+	helper = 
+	helper = !/opt/homebrew/bin/gh auth git-credential
+[credential "https://gist.github.com"]
+	helper = 
+	helper = !/opt/homebrew/bin/gh auth git-credential
