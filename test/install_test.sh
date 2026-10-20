@@ -24,15 +24,21 @@ new_home() {
 run_install() { sh "$INSTALL" "$@" >"$HOME/out.log" 2>&1; }
 
 # Every file install.sh links, as package:path-under-$HOME.
-LINKS="tmux:.tmux.conf agent-token:.zshenv zsh:.zprofile zsh:.zshrc agent-token:.bash_profile git:.gitconfig
-agent-token:.config/gh/agent-token.sh agent-token:.config/gh/agent-token-test.sh"
+LINKS="tmux:.tmux.conf zsh:.zprofile zsh:.zshrc git:.gitconfig"
+# Every file install.sh copies from agent-token/, as path-under-$HOME.
+COPIES=".zshenv .bash_profile .config/gh/agent-token.sh .config/gh/agent-token-test.sh"
 
-assert_linked() { # context [checkout]
+assert_installed() { # context [checkout]
   for link in $LINKS; do
     pkg=${link%%:*} path=${link#*:}
     [ -L "$HOME/$path" ] || fail "$1: ~/$path is not a symlink"
     [ "$HOME/$path" -ef "${2:-$HOME/dotfiles}/$pkg/$path" ] ||
       fail "$1: ~/$path does not point into $pkg/"
+  done
+  for path in $COPIES; do
+    [ -f "$HOME/$path" ] && [ ! -L "$HOME/$path" ] || fail "$1: ~/$path is not a regular file"
+    cmp -s "$HOME/$path" "${2:-$HOME/dotfiles}/agent-token/$path" ||
+      fail "$1: ~/$path differs from agent-token/$path"
   done
 }
 
@@ -48,33 +54,33 @@ tmux -L "install_test_$$" source-file "$HOME/no-tpm.conf" ||
 tmux -L "install_test_$$" kill-server
 pass "tmux config parses"
 
-# 2. fresh install links every file, creating real directories on the way
+# 2. fresh install links or copies every file, creating real directories on the way
 new_home 2
 run_install || fail "fresh install exited non-zero: $(cat "$HOME/out.log")"
-assert_linked "fresh install"
+assert_installed "fresh install"
 # A ~/.config folded into a symlink would make gh write its tokens into the repo.
 for dir in .config .config/gh; do
   [ -d "$HOME/$dir" ] || fail "fresh install: ~/$dir is not a directory"
   [ ! -L "$HOME/$dir" ] || fail "fresh install: ~/$dir is a symlink into the repo"
 done
-pass "fresh install links every file"
+pass "fresh install links or copies every file"
 
 # 3. second run succeeds and changes nothing
 before=$(snapshot)
 run_install || fail "second run exited non-zero: $(cat "$HOME/out.log")"
-assert_linked "second run"
+assert_installed "second run"
 [ "$(snapshot)" = "$before" ] || fail "second run changed \$HOME"
 [ -z "$(git -C "$HOME/dotfiles" status --porcelain)" ] || fail "second run dirtied the repo"
 pass "second run is a no-op"
 
-# 4. pre-existing regular files are backed up, then linked; files beside them are kept
+# 4. pre-existing regular files are backed up, then replaced; files beside them are kept
 new_home 4
 mkdir -p "$HOME/.config/gh"
 echo "old config" >"$HOME/.tmux.conf"
 echo "old loader" >"$HOME/.config/gh/agent-token.sh"
 echo "token" >"$HOME/.config/gh/agent-token"
 run_install || fail "backup run exited non-zero: $(cat "$HOME/out.log")"
-assert_linked "backup run"
+assert_installed "backup run"
 set -- "$HOME"/.tmux.conf.bak.*
 [ -f "$1" ] || fail "no backup file created"
 [ "$(cat "$1")" = "old config" ] || fail "backup content differs"
@@ -85,13 +91,16 @@ set -- "$HOME"/.config/gh/agent-token.sh.bak.*
 [ "$(cat "$HOME/.config/gh/agent-token")" = "token" ] || fail "file beside a linked file was changed"
 pass "existing files are backed up"
 
-# 5. --adopt pulls the existing file into the repo instead of backing it up
+# 5. --adopt pulls existing files into the repo instead of backing them up
 new_home 5
 echo "adopted config" >"$HOME/.tmux.conf"
+echo "adopted zshenv" >"$HOME/.zshenv"
 run_install --adopt || fail "adopt run exited non-zero: $(cat "$HOME/out.log")"
-assert_linked "adopt run"
+assert_installed "adopt run"
 [ "$(cat "$HOME/dotfiles/tmux/.tmux.conf")" = "adopted config" ] || fail "file not adopted"
+[ "$(cat "$HOME/dotfiles/agent-token/.zshenv")" = "adopted zshenv" ] || fail "copied file not adopted"
 ! ls "$HOME"/.tmux.conf.bak.* >/dev/null 2>&1 || fail "adopt also made a backup"
+! ls "$HOME"/.zshenv.bak.* >/dev/null 2>&1 || fail "adopt also backed up the copied file"
 grep -q "git -C .* diff" "$HOME/out.log" || fail "adopt did not suggest git diff"
 pass "--adopt adopts the existing file"
 
@@ -123,7 +132,7 @@ pass "missing stow gives a clear error"
 # 8. a checkout outside ~/dotfiles still links into $HOME, not its parent dir
 new_home 8
 DOTFILES="$HOME/repos/dotfiles" run_install || fail "custom DOTFILES exited non-zero: $(cat "$HOME/out.log")"
-assert_linked "custom DOTFILES" "$HOME/repos/dotfiles"
+assert_installed "custom DOTFILES" "$HOME/repos/dotfiles"
 pass "DOTFILES outside ~/dotfiles links into \$HOME"
 
 # 9. zsh starts quietly without fnm or oh-my-zsh, and reads ~/.zshrc.local
@@ -158,7 +167,7 @@ out=$(sh "$REPO/agent-token/.config/gh/agent-token-test.sh" "$REPO/agent-token/.
   fail "agent-token-test.sh: $out"
 pass "agent-token loader passes its own test"
 
-# 13. the linked startup files hand non-interactive shells the agent token
+# 13. the copied startup files hand non-interactive shells the agent token
 new_home 13
 run_install || fail "token run exited non-zero: $(cat "$HOME/out.log")"
 printf 'fake-wired' >"$HOME/.config/gh/agent-token"
@@ -166,6 +175,28 @@ printf 'fake-wired' >"$HOME/.config/gh/agent-token"
 token_from() { (cd "$HOME" && PATH=/usr/bin:/bin "$@" 'printenv GH_TOKEN'); }
 [ "$(token_from zsh -c)" = "fake-wired" ] || fail "zsh -c: ~/.zshenv did not load the agent token"
 [ "$(token_from bash -l -c)" = "fake-wired" ] || fail "bash -l -c: ~/.bash_profile did not load the agent token"
-pass "zsh and bash login shells load the agent token through the linked files"
+pass "zsh and bash login shells load the agent token through the copied files"
+
+# 14. the copies keep handing out the agent token after the checkout moves
+new_home 14
+run_install || fail "moved-checkout run exited non-zero: $(cat "$HOME/out.log")"
+printf 'fake-moved' >"$HOME/.config/gh/agent-token"
+mv "$HOME/dotfiles" "$HOME/moved"
+[ "$(token_from zsh -c)" = "fake-moved" ] || fail "moved checkout: zsh -c lost the agent token"
+[ "$(token_from bash -l -c)" = "fake-moved" ] || fail "moved checkout: bash -l -c lost the agent token"
+pass "the agent token still loads after the checkout moves"
+
+# 15. a symlink into the repo at a copy target is refused, or the guard would still hang off the checkout
+new_home 15
+run_install || fail "into-repo symlink setup exited non-zero: $(cat "$HOME/out.log")"
+rm "$HOME/.zshenv"
+ln -s "$HOME/dotfiles/agent-token/.zshenv" "$HOME/.zshenv"
+cp "$HOME/dotfiles/agent-token/.zshenv" "$HOME/zshenv.before"
+! run_install || fail "into-repo symlink ~/.zshenv: install should fail"
+grep -q "is a symlink to" "$HOME/out.log" || fail "into-repo symlink ~/.zshenv: unclear message: $(cat "$HOME/out.log")"
+[ -L "$HOME/.zshenv" ] && [ "$HOME/.zshenv" -ef "$HOME/dotfiles/agent-token/.zshenv" ] ||
+  fail "into-repo symlink ~/.zshenv was modified"
+cmp -s "$HOME/dotfiles/agent-token/.zshenv" "$HOME/zshenv.before" || fail "into-repo symlink: the repo's .zshenv changed"
+pass "a symlink into the repo at ~/.zshenv is refused"
 
 echo "all tests passed"
