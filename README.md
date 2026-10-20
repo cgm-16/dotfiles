@@ -4,7 +4,7 @@ Personal dotfiles, linked into `$HOME` with [GNU Stow](https://www.gnu.org/softw
 
 - `tmux/`: `.tmux.conf`
 - `zsh/`: `.zprofile`, `.zshrc`. Oh My Zsh and fnm are used when installed and skipped when not.
-- `git/`: `.gitconfig`
+- `git/`: `.gitconfig`, and the global ignore at `~/.config/git/ignore`
 
 ## Install
 

@@ -24,7 +24,7 @@ new_home() {
 run_install() { sh "$INSTALL" "$@" >"$HOME/out.log" 2>&1; }
 
 # Every file install.sh links, as package:path-under-$HOME.
-LINKS="tmux:.tmux.conf zsh:.zprofile zsh:.zshrc git:.gitconfig"
+LINKS="tmux:.tmux.conf zsh:.zprofile zsh:.zshrc git:.gitconfig git:.config/git/ignore"
 
 assert_linked() { # context [checkout]
   for link in $LINKS; do
@@ -47,11 +47,17 @@ tmux -L "install_test_$$" source-file "$HOME/no-tpm.conf" ||
 tmux -L "install_test_$$" kill-server
 pass "tmux config parses"
 
-# 2. fresh install links every file
+# 2. fresh install links every file and keeps ~/.config a real directory
 new_home 2
 run_install || fail "fresh install exited non-zero: $(cat "$HOME/out.log")"
+# A folded ~/.config would put everything other tools write there, gh's tokens
+# included, inside the repo. Checked first: folding also breaks assert_linked.
+for dir in .config .config/git; do
+  [ ! -L "$HOME/$dir" ] || fail "fresh install: ~/$dir is a symlink"
+  [ -d "$HOME/$dir" ] || fail "fresh install: ~/$dir is not a directory"
+done
 assert_linked "fresh install"
-pass "fresh install links every file"
+pass "fresh install links every file and keeps ~/.config a real directory"
 
 # 3. second run succeeds and changes nothing
 before=$(snapshot)
