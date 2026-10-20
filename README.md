@@ -1,6 +1,10 @@
 # dotfiles
 
-Personal dotfiles, linked into `$HOME` with [GNU Stow](https://www.gnu.org/software/stow/). Each top-level folder is a Stow package (currently only `tmux/`).
+Personal dotfiles, linked into `$HOME` with [GNU Stow](https://www.gnu.org/software/stow/). Each top-level folder is a Stow package:
+
+- `tmux/`: `.tmux.conf`
+- `zsh/`: `.zprofile`, `.zshrc`. Oh My Zsh and fnm are used when installed and skipped when not.
+- `git/`: `.gitconfig`
 
 ## Install
 
@@ -20,7 +24,7 @@ Then start `tmux`. TPM and the plugins install automatically on first launch.
 
 The script is idempotent. Re-run it any time to pull updates and relink.
 
-- **Existing `~/.tmux.conf`** is moved to `~/.tmux.conf.bak.<timestamp>`. To pull it into the repo instead, pass `--adopt` (`… | sh -s -- --adopt`), then review with `git -C ~/dotfiles diff`.
+- **Existing files** such as `~/.zshrc` are moved to `~/.zshrc.bak.<timestamp>`. To pull them into the repo instead, pass `--adopt` (`… | sh -s -- --adopt`), then review with `git -C ~/dotfiles diff`.
 - **Checkout somewhere else:** `DOTFILES=~/repos/dotfiles ~/repos/dotfiles/install.sh`.
 
 ## Machine-local tmux settings
@@ -39,7 +43,16 @@ Truecolor is enabled for outer terminals reporting `TERM=xterm-256color`. If you
 set -as terminal-features ",xterm-ghostty:RGB"
 ```
 
+## Machine-local shell and git settings
+
+Both files are read if they exist and are never committed:
+
+- `~/.zshrc.local`, sourced from `.zshrc` before fnm. Lines an installer appends to `~/.zshrc` (Docker Desktop, opencode) land in the repo copy, so move them here.
+- `~/.gitconfig.local`, included last by `.gitconfig`, so its values win. Put credential helpers here. `git config --global` and `gh auth setup-git` write through the link into the tracked `.gitconfig`, so use `git config --file ~/.gitconfig.local` instead.
+
 ## Tests
+
+Needs `zsh` as well as the install prerequisites.
 
 ```sh
 sh test/install_test.sh
