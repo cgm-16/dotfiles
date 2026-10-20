@@ -24,8 +24,8 @@ new_home() {
 run_install() { sh "$INSTALL" "$@" >"$HOME/out.log" 2>&1; }
 
 # Every file install.sh links, as package:path-under-$HOME.
-LINKS="tmux:.tmux.conf zsh:.zshenv zsh:.zprofile zsh:.zshrc bash:.bash_profile git:.gitconfig
-gh:.config/gh/agent-token.sh gh:.config/gh/agent-token-test.sh"
+LINKS="tmux:.tmux.conf agent-token:.zshenv zsh:.zprofile zsh:.zshrc agent-token:.bash_profile git:.gitconfig
+agent-token:.config/gh/agent-token.sh agent-token:.config/gh/agent-token-test.sh"
 
 assert_linked() { # context [checkout]
   for link in $LINKS; do
@@ -154,7 +154,7 @@ got=$(cd "$HOME" && GIT_CONFIG_NOSYSTEM=1 git config --get user.email)
 pass "values in ~/.gitconfig.local override ~/.gitconfig"
 
 # 12. the token loader passes its own acceptance test
-out=$(sh "$REPO/gh/.config/gh/agent-token-test.sh" "$REPO/gh/.config/gh/agent-token.sh" 2>&1) ||
+out=$(sh "$REPO/agent-token/.config/gh/agent-token-test.sh" "$REPO/agent-token/.config/gh/agent-token.sh" 2>&1) ||
   fail "agent-token-test.sh: $out"
 pass "agent-token loader passes its own test"
 

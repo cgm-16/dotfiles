@@ -39,7 +39,7 @@ else
 fi
 
 # Stow packages: each top-level folder mirrors the files it links into $HOME.
-set -- tmux zsh bash git gh
+set -- tmux zsh git agent-token
 
 # Tracked files only, as package/path, so files tools write beside a link
 # (gh's tokens next to the loader) are never touched.
