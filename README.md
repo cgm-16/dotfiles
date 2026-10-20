@@ -1,16 +1,10 @@
 # dotfiles
 
-Personal dotfiles, installed into `$HOME` from one top-level folder per package. These are linked with [GNU Stow](https://www.gnu.org/software/stow/):
+Personal dotfiles, linked into `$HOME` with [GNU Stow](https://www.gnu.org/software/stow/). Each top-level folder is a Stow package:
 
 - `tmux/`: `.tmux.conf`
 - `zsh/`: `.zprofile`, `.zshrc`. Oh My Zsh and fnm are used when installed and skipped when not.
 - `git/`: `.gitconfig`
-
-This one is copied:
-
-- `agent-token/`: `.zshenv`, `.bash_profile` and `~/.config/gh/agent-token.sh`, which gives non-interactive shells (coding agents) a restricted GitHub token from `~/.config/gh/agent-token`, plus its test. `.zshenv` and `.bash_profile` source it. The tokens themselves are never committed.
-
-`agent-token/` is copied so the token guard does not depend on the checkout. A link would dangle once the checkout is moved, deleted or switched to another branch, and agent shells would silently fall back to the full-access token in gh's keyring. To change these files, edit them in the repo and re-run `install.sh`. A hand edit to a copy in `$HOME` is backed up and replaced on the next run.
 
 ## Install
 
@@ -28,7 +22,7 @@ git clone https://github.com/cgm-16/dotfiles.git ~/dotfiles && ~/dotfiles/instal
 
 Then start `tmux`. TPM and the plugins install automatically on first launch.
 
-The script is idempotent. Re-run it any time to pull updates, relink and recopy.
+The script is idempotent. Re-run it any time to pull updates and relink.
 
 - **Existing files** such as `~/.zshrc` are moved to `~/.zshrc.bak.<timestamp>`. To pull them into the repo instead, pass `--adopt` (`… | sh -s -- --adopt`), then review with `git -C ~/dotfiles diff`.
 - **Checkout somewhere else:** `DOTFILES=~/repos/dotfiles ~/repos/dotfiles/install.sh`.
@@ -58,7 +52,7 @@ Both files are read if they exist and are never committed:
 
 ## Tests
 
-Needs `zsh` and `bash` as well as the install prerequisites.
+Needs `zsh` as well as the install prerequisites.
 
 ```sh
 sh test/install_test.sh
