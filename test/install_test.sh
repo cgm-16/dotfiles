@@ -7,7 +7,11 @@ set -eu
 REPO=$(cd "$(dirname "$0")/.." && pwd -P)
 INSTALL="$REPO/install.sh"
 ROOT=$(mktemp -d)
-trap 'rm -rf "$ROOT"' EXIT
+# Every tmux socket lives under $ROOT, so no server outside the tests can be
+# seen or killed; a set TMUX would override TMUX_TMPDIR.
+unset TMUX
+export TMUX_TMPDIR="$ROOT"
+trap 'tmux -S "$ROOT/tmux-$(id -u)/default" kill-server 2>/dev/null || :; rm -rf "$ROOT"' EXIT
 
 fail() { echo "FAIL: $*" >&2; exit 1; }
 pass() { echo "ok - $*"; }
@@ -57,6 +61,7 @@ for dir in .config .config/git; do
   [ -d "$HOME/$dir" ] || fail "fresh install: ~/$dir is not a directory"
 done
 assert_linked "fresh install"
+! grep -q "already running" "$HOME/out.log" || fail "fresh install: reload hint shown with no tmux server"
 pass "fresh install links every file and keeps ~/.config a real directory"
 
 # 3. second run succeeds and changes nothing
@@ -140,5 +145,15 @@ printf '[user]\n\temail = local@example.com\n' >"$HOME/.gitconfig.local"
 got=$(cd "$HOME" && GIT_CONFIG_NOSYSTEM=1 git config --get user.email)
 [ "$got" = "local@example.com" ] || fail "git: ~/.gitconfig.local does not override ~/.gitconfig (got: $got)"
 pass "values in ~/.gitconfig.local override ~/.gitconfig"
+
+# 11. a tmux server started before the install is told to reload, since tmux
+# reads ~/.tmux.conf only at server start
+new_home 11
+tmux -f /dev/null new-session -d
+run_install || fail "running tmux: install exited non-zero: $(cat "$HOME/out.log")"
+tmux -S "$ROOT/tmux-$(id -u)/default" kill-server
+grep -q "already running" "$HOME/out.log" || fail "running tmux: no reload hint: $(cat "$HOME/out.log")"
+grep -q "tmux source-file ~/.tmux.conf" "$HOME/out.log" || fail "running tmux: hint lacks the reload command"
+pass "a running tmux server gets a reload hint"
 
 echo "all tests passed"

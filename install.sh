@@ -74,4 +74,12 @@ echo
 echo "linked into $HOME: $*"
 for backup in $backups; do echo "backup: $backup"; done
 [ -z "$ADOPT" ] || echo "adopted: review with: git -C $DOTFILES diff"
-echo "start tmux, plugins install automatically"
+# tmux reads ~/.tmux.conf only when its server starts, so a server that was
+# already running keeps its old settings.
+if tmux list-sessions >/dev/null 2>&1; then
+  echo "tmux is already running and won't read the new config until it restarts."
+  echo "  reload, keeping sessions: tmux source-file ~/.tmux.conf"
+  echo "  or restart:               tmux kill-server, then start tmux"
+else
+  echo "start tmux, plugins install automatically"
+fi
